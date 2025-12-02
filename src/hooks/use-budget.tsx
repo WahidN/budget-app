@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 import {
   initializeBudgetDocument,
@@ -34,11 +34,15 @@ const defaultData: BudgetData = {
 type BudgetState = {
   data: BudgetData;
   selectedMonth: string;
+  loading: boolean;
+  error: string | null;
 };
 
 type BudgetActions = {
   setSelectedMonth: (month: string) => void;
   setData: (data: BudgetData) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
   addIncome: (entry: Omit<Entry, "id">) => void;
   editIncome: (entry: Entry) => void;
   deleteIncome: (id: number) => void;
@@ -60,225 +64,217 @@ type BudgetActions = {
 
 type BudgetStore = BudgetState & BudgetActions;
 
-const useBudgetStore = create<BudgetStore>()(
-  persist(
-    (set, get) => ({
-      data: defaultData,
-      selectedMonth: getMonthYear(new Date()),
+const useBudgetStore = create<BudgetStore>()((set, get) => ({
+  data: defaultData,
+  selectedMonth: getMonthYear(new Date()),
+  loading: false,
+  error: null,
 
-      setSelectedMonth: (month) => set({ selectedMonth: month }),
-      setData: (data) => set({ data }),
+  setSelectedMonth: (month) => set({ selectedMonth: month }),
+  setData: (data) => set({ data }),
+  setLoading: (loading) => set({ loading }),
+  setError: (error) => set({ error }),
 
-      addIncome: (entry) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            incomes: [
-              ...data.incomes,
-              { ...entry, id: getNextId(data.incomes) },
-            ],
-          },
-        });
+  addIncome: (entry) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        incomes: [...data.incomes, { ...entry, id: getNextId(data.incomes) }],
       },
+    });
+  },
 
-      editIncome: (entry) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            incomes: data.incomes.map((i) => (i.id === entry.id ? entry : i)),
-          },
-        });
+  editIncome: (entry) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        incomes: data.incomes.map((i) => (i.id === entry.id ? entry : i)),
       },
+    });
+  },
 
-      deleteIncome: (id) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            incomes: data.incomes.filter((i) => i.id !== id),
-          },
-        });
+  deleteIncome: (id) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        incomes: data.incomes.filter((i) => i.id !== id),
       },
+    });
+  },
 
-      reorderIncomes: (incomes) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            incomes,
-          },
-        });
+  reorderIncomes: (incomes) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        incomes,
       },
+    });
+  },
 
-      addExpense: (entry) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            expenses: [
-              ...data.expenses,
-              { ...entry, id: getNextId(data.expenses) },
-            ],
-          },
-        });
+  addExpense: (entry) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        expenses: [
+          ...data.expenses,
+          { ...entry, id: getNextId(data.expenses) },
+        ],
       },
+    });
+  },
 
-      editExpense: (entry) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            expenses: data.expenses.map((e) => (e.id === entry.id ? entry : e)),
-          },
-        });
+  editExpense: (entry) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        expenses: data.expenses.map((e) => (e.id === entry.id ? entry : e)),
       },
+    });
+  },
 
-      deleteExpense: (id) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            expenses: data.expenses.filter((e) => e.id !== id),
-          },
-        });
+  deleteExpense: (id) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        expenses: data.expenses.filter((e) => e.id !== id),
       },
+    });
+  },
 
-      reorderExpenses: (expenses) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            expenses,
-          },
-        });
+  reorderExpenses: (expenses) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        expenses,
       },
+    });
+  },
 
-      addSubscription: (sub) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            subscriptions: [
-              ...data.subscriptions,
-              { ...sub, id: getNextId(data.subscriptions) },
-            ],
-          },
-        });
+  addSubscription: (sub) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        subscriptions: [
+          ...data.subscriptions,
+          { ...sub, id: getNextId(data.subscriptions) },
+        ],
       },
+    });
+  },
 
-      deleteSubscription: (id) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            subscriptions: data.subscriptions.filter((s) => s.id !== id),
-          },
-        });
+  deleteSubscription: (id) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        subscriptions: data.subscriptions.filter((s) => s.id !== id),
       },
+    });
+  },
 
-      addCategory: (category) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            categories: [
-              ...data.categories,
-              { ...category, id: getNextId(data.categories) },
-            ],
-          },
-        });
+  addCategory: (category) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        categories: [
+          ...data.categories,
+          { ...category, id: getNextId(data.categories) },
+        ],
       },
+    });
+  },
 
-      editCategory: (category) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            categories: data.categories.map((c) =>
-              c.id === category.id ? category : c
-            ),
-          },
-        });
+  editCategory: (category) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        categories: data.categories.map((c) =>
+          c.id === category.id ? category : c
+        ),
       },
+    });
+  },
 
-      deleteCategory: (id) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            categories: data.categories.filter((c) => c.id !== id),
-            expenses: data.expenses.map((e) =>
-              e.categoryId === id ? { ...e, categoryId: undefined } : e
-            ),
-            dynamicExpenses: data.dynamicExpenses.map((e) =>
-              e.categoryId === id ? { ...e, categoryId: undefined } : e
-            ),
-          },
-        });
+  deleteCategory: (id) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        categories: data.categories.filter((c) => c.id !== id),
+        expenses: data.expenses.map((e) =>
+          e.categoryId === id ? { ...e, categoryId: undefined } : e
+        ),
+        dynamicExpenses: data.dynamicExpenses.map((e) =>
+          e.categoryId === id ? { ...e, categoryId: undefined } : e
+        ),
       },
+    });
+  },
 
-      toggleCategoryForMonth: (categoryId) => {
-        const { data, selectedMonth } = get();
-        const currentDisabled =
-          data.disabledCategoriesByMonth[selectedMonth] || [];
-        const isDisabled = currentDisabled.includes(categoryId);
+  toggleCategoryForMonth: (categoryId) => {
+    const { data, selectedMonth } = get();
+    const currentDisabled = data.disabledCategoriesByMonth[selectedMonth] || [];
+    const isDisabled = currentDisabled.includes(categoryId);
 
-        set({
-          data: {
-            ...data,
-            disabledCategoriesByMonth: {
-              ...data.disabledCategoriesByMonth,
-              [selectedMonth]: isDisabled
-                ? currentDisabled.filter((id) => id !== categoryId)
-                : [...currentDisabled, categoryId],
-            },
-          },
-        });
+    set({
+      data: {
+        ...data,
+        disabledCategoriesByMonth: {
+          ...data.disabledCategoriesByMonth,
+          [selectedMonth]: isDisabled
+            ? currentDisabled.filter((id) => id !== categoryId)
+            : [...currentDisabled, categoryId],
+        },
       },
+    });
+  },
 
-      addDynamicExpense: (expense) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            dynamicExpenses: [
-              ...data.dynamicExpenses,
-              { ...expense, id: getNextId(data.dynamicExpenses) },
-            ],
-          },
-        });
+  addDynamicExpense: (expense) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        dynamicExpenses: [
+          ...data.dynamicExpenses,
+          { ...expense, id: getNextId(data.dynamicExpenses) },
+        ],
       },
+    });
+  },
 
-      editDynamicExpense: (expense) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            dynamicExpenses: data.dynamicExpenses.map((e) =>
-              e.id === expense.id ? expense : e
-            ),
-          },
-        });
+  editDynamicExpense: (expense) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        dynamicExpenses: data.dynamicExpenses.map((e) =>
+          e.id === expense.id ? expense : e
+        ),
       },
+    });
+  },
 
-      deleteDynamicExpense: (id) => {
-        const { data } = get();
-        set({
-          data: {
-            ...data,
-            dynamicExpenses: data.dynamicExpenses.filter((e) => e.id !== id),
-          },
-        });
+  deleteDynamicExpense: (id) => {
+    const { data } = get();
+    set({
+      data: {
+        ...data,
+        dynamicExpenses: data.dynamicExpenses.filter((e) => e.id !== id),
       },
-    }),
-    {
-      name: "budget-app:data",
-      partialize: (state) => ({ data: state.data }),
-    }
-  )
-);
+    });
+  },
+}));
 
 function debounce<T extends (...args: any[]) => void>(
   func: T,
@@ -306,9 +302,19 @@ export function useBudget() {
   const syncToFirestore = useRef(
     debounce(async (userId: string, data: BudgetData) => {
       try {
+        store.setLoading(true);
+        store.setError(null);
         await saveBudgetDataToFirestore(userId, data);
-      } catch (error) {
+      } catch (error: any) {
+        const errorMessage =
+          error?.message || "Failed to save data. Please try again.";
+        store.setError(errorMessage);
+        toast.error("Failed to save", {
+          description: errorMessage,
+        });
         console.error("Error syncing to Firestore:", error);
+      } finally {
+        store.setLoading(false);
       }
     }, 1000)
   ).current;
@@ -321,6 +327,7 @@ export function useBudget() {
       }
       isInitializedRef.current = false;
       hasLoadedFromFirestoreRef.current = false;
+      store.setData(defaultData);
       return;
     }
 
@@ -330,11 +337,19 @@ export function useBudget() {
     const userId = user.uid;
     let hasLoadedOnce = false;
 
+    store.setLoading(true);
+    store.setError(null);
+
     initializeBudgetDocument(userId, defaultData)
       .then(() => {
         hasLoadedFromFirestoreRef.current = true;
       })
-      .catch((error) => {
+      .catch((error: any) => {
+        const errorMessage = error?.message || "Failed to initialize data.";
+        store.setError(errorMessage);
+        toast.error("Failed to load data", {
+          description: errorMessage,
+        });
         console.error("Error initializing budget document:", error);
       });
 
@@ -342,20 +357,10 @@ export function useBudget() {
       if (!hasLoadedOnce) {
         if (firestoreData) {
           store.setData(firestoreData);
+          store.setLoading(false);
         } else {
-          const currentData = store.data;
-          const isEmpty =
-            currentData.incomes.length === 0 &&
-            currentData.expenses.length === 0 &&
-            currentData.subscriptions.length === 0 &&
-            currentData.categories.length === 0 &&
-            currentData.dynamicExpenses.length === 0;
-          
-          if (!isEmpty) {
-            saveBudgetDataToFirestore(userId, currentData).catch((error) => {
-              console.error("Error syncing existing data to Firestore:", error);
-            });
-          }
+          store.setData(defaultData);
+          store.setLoading(false);
         }
         hasLoadedOnce = true;
         hasLoadedFromFirestoreRef.current = true;

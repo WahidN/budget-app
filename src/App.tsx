@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ProtectedRoute } from "@/components/protected-route";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useBudget } from "@/hooks/use-budget";
 import { DashboardPage } from "@/pages/dashboard";
@@ -68,12 +69,15 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route
-        path="/*"
-        element={user ? <AppLayout /> : <Navigate to="/login" replace />}
-      />
-    </Routes>
+    <>
+      <Toaster />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/*"
+          element={user ? <AppLayout /> : <Navigate to="/login" replace />}
+        />
+      </Routes>
+    </>
   );
 }
