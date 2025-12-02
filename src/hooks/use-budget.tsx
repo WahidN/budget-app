@@ -339,17 +339,23 @@ export function useBudget() {
       });
 
     const unsubscribe = subscribeToBudgetData(userId, (firestoreData) => {
-      if (!hasLoadedOnce && firestoreData) {
-        const currentData = store.data;
-        const isEmpty =
-          currentData.incomes.length === 0 &&
-          currentData.expenses.length === 0 &&
-          currentData.subscriptions.length === 0 &&
-          currentData.categories.length === 0 &&
-          currentData.dynamicExpenses.length === 0;
-
-        if (isEmpty) {
+      if (!hasLoadedOnce) {
+        if (firestoreData) {
           store.setData(firestoreData);
+        } else {
+          const currentData = store.data;
+          const isEmpty =
+            currentData.incomes.length === 0 &&
+            currentData.expenses.length === 0 &&
+            currentData.subscriptions.length === 0 &&
+            currentData.categories.length === 0 &&
+            currentData.dynamicExpenses.length === 0;
+          
+          if (!isEmpty) {
+            saveBudgetDataToFirestore(userId, currentData).catch((error) => {
+              console.error("Error syncing existing data to Firestore:", error);
+            });
+          }
         }
         hasLoadedOnce = true;
         hasLoadedFromFirestoreRef.current = true;
