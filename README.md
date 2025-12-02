@@ -1,3 +1,67 @@
+# Budget App
+
+A budget management application built with React, TypeScript, Vite, and Firebase Authentication.
+
+## Features
+
+- 📊 Budget tracking and management
+- 💰 Income and expense tracking
+- 📅 Monthly budget planning
+- 🔐 Google Authentication (via Firebase)
+- 💾 Local storage persistence
+
+## Setup
+
+### Prerequisites
+
+- Node.js (v18 or higher)
+- pnpm (or npm/yarn)
+- A Firebase project
+
+### Firebase Setup
+
+1. Create a new project at [Firebase Console](https://console.firebase.google.com/)
+2. Enable **Authentication** and select **Google** as a sign-in provider
+3. Go to Project Settings > General
+4. Under "Your apps", add a web app (if not already added)
+5. Copy the Firebase configuration values
+6. Create a `.env` file in the root directory based on `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+7. Fill in your Firebase configuration values in `.env`
+
+### Installation
+
+```bash
+# Install dependencies
+pnpm install
+
+# Start development server
+pnpm dev
+
+# Build for production
+pnpm build
+```
+
+## Authentication
+
+The app uses Firebase Authentication with Google Sign-In. Users must sign in with their Google account to access the dashboard and subscriptions pages.
+
+## Tech Stack
+
+- React 19
+- TypeScript
+- Vite
+- Firebase Authentication
+- Zustand (state management)
+- Tailwind CSS
+- React Router
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
@@ -19,9 +83,9 @@ If you are developing a production application, we recommend updating the config
 
 ```js
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(["dist"]),
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ["**/*.{ts,tsx}"],
     extends: [
       // Other configs...
 
@@ -36,40 +100,40 @@ export default defineConfig([
     ],
     languageOptions: {
       parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
         tsconfigRootDir: import.meta.dirname,
       },
       // other options...
     },
   },
-])
+]);
 ```
 
 You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
 ```js
 // eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+import reactX from "eslint-plugin-react-x";
+import reactDom from "eslint-plugin-react-dom";
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(["dist"]),
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ["**/*.{ts,tsx}"],
     extends: [
       // Other configs...
       // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
+      reactX.configs["recommended-typescript"],
       // Enable lint rules for React DOM
       reactDom.configs.recommended,
     ],
     languageOptions: {
       parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
         tsconfigRootDir: import.meta.dirname,
       },
       // other options...
     },
   },
-])
+]);
 ```
