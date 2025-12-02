@@ -28,6 +28,23 @@ export async function loadBudgetDataFromFirestore(
   }
 }
 
+export async function initializeBudgetDocument(
+  userId: string,
+  defaultData: BudgetData
+): Promise<void> {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, userId);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      await setDoc(docRef, defaultData, { merge: false });
+    }
+  } catch (error) {
+    console.error("Error initializing budget document:", error);
+    throw error;
+  }
+}
+
 export async function saveBudgetDataToFirestore(
   userId: string,
   data: BudgetData

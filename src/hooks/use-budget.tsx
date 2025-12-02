@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import {
+  initializeBudgetDocument,
   saveBudgetDataToFirestore,
   subscribeToBudgetData,
 } from "@/lib/firestore-sync";
@@ -328,6 +329,14 @@ export function useBudget() {
 
     const userId = user.uid;
     let hasLoadedOnce = false;
+
+    initializeBudgetDocument(userId, defaultData)
+      .then(() => {
+        hasLoadedFromFirestoreRef.current = true;
+      })
+      .catch((error) => {
+        console.error("Error initializing budget document:", error);
+      });
 
     const unsubscribe = subscribeToBudgetData(userId, (firestoreData) => {
       if (!hasLoadedOnce && firestoreData) {
