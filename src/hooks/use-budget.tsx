@@ -1,6 +1,11 @@
+import { useEffect, useRef } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import {
+  saveBudgetDataToFirestore,
+  subscribeToBudgetData,
+} from "@/lib/firestore-sync";
 import {
   getDynamicExpensesForMonth,
   getExpensesForMonth,
@@ -13,6 +18,7 @@ import {
   type Entry,
   type Subscription,
 } from "@/lib/storage";
+import { useAuth } from "./use-auth";
 
 const defaultData: BudgetData = {
   incomes: [],
@@ -31,6 +37,7 @@ type BudgetState = {
 
 type BudgetActions = {
   setSelectedMonth: (month: string) => void;
+  setData: (data: BudgetData) => void;
   addIncome: (entry: Omit<Entry, "id">) => void;
   editIncome: (entry: Entry) => void;
   deleteIncome: (id: number) => void;
@@ -59,6 +66,7 @@ const useBudgetStore = create<BudgetStore>()(
       selectedMonth: getMonthYear(new Date()),
 
       setSelectedMonth: (month) => set({ selectedMonth: month }),
+      setData: (data) => set({ data }),
 
       addIncome: (entry) => {
         const { data } = get();
@@ -271,8 +279,112 @@ const useBudgetStore = create<BudgetStore>()(
   )
 );
 
+function debounce<T extends (...args: any[]) => void>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: number | null = null;
+  return function executedFunction(...args: Parameters<T>) {
+    const later = () => {
+      timeout = null;
+      func(...args);
+    };
+    if (timeout) clearTimeout(timeout);
+    timeout = window.setTimeout(later, wait);
+  };
+}
+
 export function useBudget() {
+  const { user } = useAuth();
   const store = useBudgetStore();
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const isInitializedRef = useRef(false);
+  const hasLoadedFromFirestoreRef = useRef(false);
+  const syncTimeoutRef = useRef<number | null>(null);
+
+  const syncToFirestore = useRef(
+    debounce(async (userId: string, data: BudgetData) => {
+      try {
+        await saveBudgetDataToFirestore(userId, data);
+      } catch (error) {
+        console.error("Error syncing to Firestore:", error);
+      }
+    }, 1000)
+  ).current;
+
+  useEffect(() => {
+    if (!user?.uid) {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+      isInitializedRef.current = false;
+      hasLoadedFromFirestoreRef.current = false;
+      return;
+    }
+
+    if (isInitializedRef.current) return;
+    isInitializedRef.current = true;
+
+    const userId = user.uid;
+    let hasLoadedOnce = false;
+
+    const unsubscribe = subscribeToBudgetData(userId, (firestoreData) => {
+      if (!hasLoadedOnce && firestoreData) {
+        const currentData = store.data;
+        const isEmpty =
+          currentData.incomes.length === 0 &&
+          currentData.expenses.length === 0 &&
+          currentData.subscriptions.length === 0 &&
+          currentData.categories.length === 0 &&
+          currentData.dynamicExpenses.length === 0;
+
+        if (isEmpty) {
+          store.setData(firestoreData);
+        }
+        hasLoadedOnce = true;
+        hasLoadedFromFirestoreRef.current = true;
+      }
+    });
+
+    unsubscribeRef.current = unsubscribe;
+
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+      isInitializedRef.current = false;
+      hasLoadedFromFirestoreRef.current = false;
+    };
+  }, [user?.uid, store]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const unsubscribe = useBudgetStore.subscribe((state) => {
+      if (hasLoadedFromFirestoreRef.current) {
+        const currentData = state.data;
+        if (syncTimeoutRef.current) {
+          clearTimeout(syncTimeoutRef.current);
+        }
+        syncTimeoutRef.current = window.setTimeout(async () => {
+          try {
+            await syncToFirestore(user.uid, currentData);
+          } catch (error) {
+            console.error("Error syncing:", error);
+          }
+        }, 1000);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, [user?.uid, syncToFirestore]);
 
   const currentIncomes = getIncomesForMonth(store.data);
   const currentExpenses = getExpensesForMonth(store.data);

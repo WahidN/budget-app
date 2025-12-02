@@ -8,7 +8,8 @@ A budget management application built with React, TypeScript, Vite, and Firebase
 - 💰 Income and expense tracking
 - 📅 Monthly budget planning
 - 🔐 Google Authentication (via Firebase)
-- 💾 Local storage persistence
+- ☁️ Cloud database (Firestore) with automatic sync
+- 💾 Local storage backup
 
 ## Setup
 
@@ -22,16 +23,26 @@ A budget management application built with React, TypeScript, Vite, and Firebase
 
 1. Create a new project at [Firebase Console](https://console.firebase.google.com/)
 2. Enable **Authentication** and select **Google** as a sign-in provider
-3. Go to Project Settings > General
-4. Under "Your apps", add a web app (if not already added)
-5. Copy the Firebase configuration values
-6. Create a `.env` file in the root directory based on `.env.example`:
+3. Enable **Firestore Database**:
+   - Go to Firestore Database in the Firebase Console
+   - Click "Create database"
+   - Start in **test mode** (we'll add security rules next)
+   - Choose a location close to your users
+4. Set up Firestore Security Rules:
+   - Go to Firestore Database > Rules
+   - Copy the contents of `firestore.rules` from this project
+   - Paste and publish the rules
+   - These rules ensure users can only access their own budget data
+5. Go to Project Settings > General
+6. Under "Your apps", add a web app (if not already added)
+7. Copy the Firebase configuration values
+8. Create a `.env` file in the root directory based on `.env.example`:
 
 ```bash
 cp .env.example .env
 ```
 
-7. Fill in your Firebase configuration values in `.env`
+9. Fill in your Firebase configuration values in `.env`
 
 ### Installation
 
