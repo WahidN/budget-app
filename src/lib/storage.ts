@@ -55,17 +55,11 @@ export function getMonthYear(date: Date): string {
   )}`;
 }
 
-export function getIncomesForMonth(data: BudgetData, month: string): Entry[] {
-  if (data.monthlyOverrides[month]?.incomes) {
-    return data.monthlyOverrides[month].incomes;
-  }
+export function getIncomesForMonth(data: BudgetData): Entry[] {
   return data.incomes;
 }
 
-export function getExpensesForMonth(data: BudgetData, month: string): Entry[] {
-  if (data.monthlyOverrides[month]?.expenses) {
-    return data.monthlyOverrides[month].expenses;
-  }
+export function getExpensesForMonth(data: BudgetData): Entry[] {
   return data.expenses;
 }
 

@@ -15,67 +15,11 @@ import {
 } from "@/lib/storage";
 
 const defaultData: BudgetData = {
-  incomes: [
-    {
-      id: 1,
-      title: "Salary",
-      description: "Monthly salary",
-      amount: 4500,
-      date: "2025-01-01",
-    },
-    {
-      id: 2,
-      title: "Freelance",
-      description: "Side project",
-      amount: 800,
-      date: "2025-01-15",
-    },
-  ],
-  expenses: [
-    {
-      id: 1,
-      title: "Rent",
-      description: "Monthly rent",
-      amount: 1800,
-      date: "2025-01-01",
-    },
-    {
-      id: 2,
-      title: "Groceries",
-      description: "Weekly groceries",
-      amount: 150,
-      date: "2025-01-05",
-      categoryId: 1,
-    },
-  ],
-  subscriptions: [
-    { id: 1, name: "Netflix", amount: 15.99 },
-    { id: 2, name: "Spotify", amount: 9.99 },
-    { id: 3, name: "Notion", amount: 10 },
-  ],
-  categories: [
-    { id: 1, name: "Groceries", budgeted: 500 },
-    { id: 2, name: "Entertainment", budgeted: 200 },
-    { id: 3, name: "Transportation", budgeted: 150 },
-    { id: 4, name: "Dining Out", budgeted: 250 },
-  ],
-  dynamicExpenses: [
-    {
-      id: 1,
-      title: "Weekly groceries",
-      amount: 85.5,
-      date: "2025-01-05",
-      categoryId: 1,
-    },
-    { id: 2, title: "Gas", amount: 45.0, date: "2025-01-08", categoryId: 3 },
-    {
-      id: 3,
-      title: "Coffee shop",
-      amount: 12.5,
-      date: "2025-01-10",
-      categoryId: 4,
-    },
-  ],
+  incomes: [],
+  expenses: [],
+  subscriptions: [],
+  categories: [],
+  dynamicExpenses: [],
   monthlyOverrides: {},
   disabledCategoriesByMonth: {},
 };
@@ -117,179 +61,87 @@ const useBudgetStore = create<BudgetStore>()(
       setSelectedMonth: (month) => set({ selectedMonth: month }),
 
       addIncome: (entry) => {
-        const { data, selectedMonth } = get();
-        const currentIncomes =
-          data.monthlyOverrides[selectedMonth]?.incomes || data.incomes;
-
+        const { data } = get();
         set({
           data: {
             ...data,
-            monthlyOverrides: {
-              ...data.monthlyOverrides,
-              [selectedMonth]: {
-                ...data.monthlyOverrides[selectedMonth],
-                incomes: [
-                  ...currentIncomes,
-                  { ...entry, id: getNextId(currentIncomes) },
-                ],
-                expenses:
-                  data.monthlyOverrides[selectedMonth]?.expenses ||
-                  data.expenses,
-              },
-            },
+            incomes: [
+              ...data.incomes,
+              { ...entry, id: getNextId(data.incomes) },
+            ],
           },
         });
       },
 
       editIncome: (entry) => {
-        const { data, selectedMonth } = get();
-        const currentIncomes =
-          data.monthlyOverrides[selectedMonth]?.incomes || data.incomes;
-
+        const { data } = get();
         set({
           data: {
             ...data,
-            monthlyOverrides: {
-              ...data.monthlyOverrides,
-              [selectedMonth]: {
-                ...data.monthlyOverrides[selectedMonth],
-                incomes: currentIncomes.map((i) =>
-                  i.id === entry.id ? entry : i
-                ),
-                expenses:
-                  data.monthlyOverrides[selectedMonth]?.expenses ||
-                  data.expenses,
-              },
-            },
+            incomes: data.incomes.map((i) => (i.id === entry.id ? entry : i)),
           },
         });
       },
 
       deleteIncome: (id) => {
-        const { data, selectedMonth } = get();
-        const currentIncomes =
-          data.monthlyOverrides[selectedMonth]?.incomes || data.incomes;
-
+        const { data } = get();
         set({
           data: {
             ...data,
-            monthlyOverrides: {
-              ...data.monthlyOverrides,
-              [selectedMonth]: {
-                ...data.monthlyOverrides[selectedMonth],
-                incomes: currentIncomes.filter((i) => i.id !== id),
-                expenses:
-                  data.monthlyOverrides[selectedMonth]?.expenses ||
-                  data.expenses,
-              },
-            },
+            incomes: data.incomes.filter((i) => i.id !== id),
           },
         });
       },
 
       reorderIncomes: (incomes) => {
-        const { data, selectedMonth } = get();
-
+        const { data } = get();
         set({
           data: {
             ...data,
-            monthlyOverrides: {
-              ...data.monthlyOverrides,
-              [selectedMonth]: {
-                ...data.monthlyOverrides[selectedMonth],
-                incomes,
-                expenses:
-                  data.monthlyOverrides[selectedMonth]?.expenses ||
-                  data.expenses,
-              },
-            },
+            incomes,
           },
         });
       },
 
       addExpense: (entry) => {
-        const { data, selectedMonth } = get();
-        const currentExpenses =
-          data.monthlyOverrides[selectedMonth]?.expenses || data.expenses;
-
+        const { data } = get();
         set({
           data: {
             ...data,
-            monthlyOverrides: {
-              ...data.monthlyOverrides,
-              [selectedMonth]: {
-                ...data.monthlyOverrides[selectedMonth],
-                incomes:
-                  data.monthlyOverrides[selectedMonth]?.incomes || data.incomes,
-                expenses: [
-                  ...currentExpenses,
-                  { ...entry, id: getNextId(currentExpenses) },
-                ],
-              },
-            },
+            expenses: [
+              ...data.expenses,
+              { ...entry, id: getNextId(data.expenses) },
+            ],
           },
         });
       },
 
       editExpense: (entry) => {
-        const { data, selectedMonth } = get();
-        const currentExpenses =
-          data.monthlyOverrides[selectedMonth]?.expenses || data.expenses;
-
+        const { data } = get();
         set({
           data: {
             ...data,
-            monthlyOverrides: {
-              ...data.monthlyOverrides,
-              [selectedMonth]: {
-                ...data.monthlyOverrides[selectedMonth],
-                incomes:
-                  data.monthlyOverrides[selectedMonth]?.incomes || data.incomes,
-                expenses: currentExpenses.map((e) =>
-                  e.id === entry.id ? entry : e
-                ),
-              },
-            },
+            expenses: data.expenses.map((e) => (e.id === entry.id ? entry : e)),
           },
         });
       },
 
       deleteExpense: (id) => {
-        const { data, selectedMonth } = get();
-        const currentExpenses =
-          data.monthlyOverrides[selectedMonth]?.expenses || data.expenses;
-
+        const { data } = get();
         set({
           data: {
             ...data,
-            monthlyOverrides: {
-              ...data.monthlyOverrides,
-              [selectedMonth]: {
-                ...data.monthlyOverrides[selectedMonth],
-                incomes:
-                  data.monthlyOverrides[selectedMonth]?.incomes || data.incomes,
-                expenses: currentExpenses.filter((e) => e.id !== id),
-              },
-            },
+            expenses: data.expenses.filter((e) => e.id !== id),
           },
         });
       },
 
       reorderExpenses: (expenses) => {
-        const { data, selectedMonth } = get();
-
+        const { data } = get();
         set({
           data: {
             ...data,
-            monthlyOverrides: {
-              ...data.monthlyOverrides,
-              [selectedMonth]: {
-                ...data.monthlyOverrides[selectedMonth],
-                incomes:
-                  data.monthlyOverrides[selectedMonth]?.incomes || data.incomes,
-                expenses,
-              },
-            },
+            expenses,
           },
         });
       },
@@ -422,8 +274,8 @@ const useBudgetStore = create<BudgetStore>()(
 export function useBudget() {
   const store = useBudgetStore();
 
-  const currentIncomes = getIncomesForMonth(store.data, store.selectedMonth);
-  const currentExpenses = getExpensesForMonth(store.data, store.selectedMonth);
+  const currentIncomes = getIncomesForMonth(store.data);
+  const currentExpenses = getExpensesForMonth(store.data);
   const currentDynamicExpenses = getDynamicExpensesForMonth(
     store.data,
     store.selectedMonth
