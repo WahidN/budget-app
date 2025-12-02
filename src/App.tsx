@@ -11,8 +11,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { defaultData, useBudget, useBudgetStore } from "@/hooks/use-budget";
 import {
   initializeBudgetDocument,
+  loadBudgetDataFromFirestore,
   saveBudgetDataToFirestore,
-  subscribeToBudgetData,
 } from "@/lib/firestore-sync";
 import { DashboardPage } from "@/pages/dashboard";
 import { LoginPage } from "@/pages/login";
@@ -61,131 +61,48 @@ function AppLayout() {
   );
 }
 
-function BudgetSync({ userId }: { userId: string }) {
-  const unsubscribeRef = useRef<(() => void) | null>(null);
-  const syncUnsubscribeRef = useRef<(() => void) | null>(null);
-  const isInitializedRef = useRef(false);
-  const hasLoadedFromFirestoreRef = useRef(false);
-  const syncTimeoutRef = useRef<number | null>(null);
+export default function App() {
+  const { user, loading } = useAuth();
   const isUpdatingFromFirestoreRef = useRef(false);
 
   useEffect(() => {
-    if (isInitializedRef.current) return;
-    isInitializedRef.current = true;
-
-    useBudgetStore.getState().setLoading(true);
-    useBudgetStore.getState().setError(null);
-
-    initializeBudgetDocument(userId, defaultData)
-      .then(() => {
-        hasLoadedFromFirestoreRef.current = true;
-      })
-      .catch((error: any) => {
-        const errorMessage = error?.message || "Failed to initialize data.";
-        useBudgetStore.getState().setError(errorMessage);
-        toast.error("Failed to load data", {
-          description: errorMessage,
-        });
-        console.error("Error initializing budget document:", error);
-      });
-
-    let hasLoadedOnce = false;
-
-    const unsubscribe = subscribeToBudgetData(userId, (firestoreData) => {
-      if (!hasLoadedOnce) {
-        isUpdatingFromFirestoreRef.current = true;
-
-        if (syncUnsubscribeRef.current) {
-          syncUnsubscribeRef.current();
-          syncUnsubscribeRef.current = null;
-        }
-
-        if (firestoreData) {
-          useBudgetStore.getState().setData(firestoreData);
-        } else {
-          useBudgetStore.getState().setData(defaultData);
-        }
-
-        useBudgetStore.getState().setLoading(false);
-        hasLoadedOnce = true;
-        hasLoadedFromFirestoreRef.current = true;
-
-        setTimeout(() => {
-          isUpdatingFromFirestoreRef.current = false;
-        }, 2000);
-      }
-    });
-
-    unsubscribeRef.current = unsubscribe;
-
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
-      if (syncUnsubscribeRef.current) {
-        syncUnsubscribeRef.current();
-        syncUnsubscribeRef.current = null;
-      }
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-      }
-      isInitializedRef.current = false;
-      hasLoadedFromFirestoreRef.current = false;
-      isUpdatingFromFirestoreRef.current = false;
-      useBudgetStore.getState().setData(defaultData);
-      useBudgetStore.getState().setLoading(false);
-      useBudgetStore.getState().setError(null);
-    };
-  }, [userId]);
+    if (user && user.uid) {
+      initializeBudgetDocument(user.uid, defaultData);
+    }
+  }, [user]);
 
   useEffect(() => {
-    if (!hasLoadedFromFirestoreRef.current) return;
-    if (syncUnsubscribeRef.current) return;
+    if (!user?.uid || loading) return;
 
-    let previousData = useBudgetStore.getState().data;
+    let timeoutId: number | null = null;
+    let previousDataString = JSON.stringify(useBudgetStore.getState().data);
 
-    const syncToFirestore = async (data: typeof previousData) => {
-      if (isUpdatingFromFirestoreRef.current) return;
-
-      try {
-        useBudgetStore.getState().setLoading(true);
-        useBudgetStore.getState().setError(null);
-        await saveBudgetDataToFirestore(userId, data);
-      } catch (error: any) {
-        const errorMessage =
-          error?.message || "Failed to save data. Please try again.";
-        useBudgetStore.getState().setError(errorMessage);
-        toast.error("Failed to save", {
-          description: errorMessage,
-        });
-        console.error("Error syncing to Firestore:", error);
-      } finally {
-        useBudgetStore.getState().setLoading(false);
-      }
-    };
-
-    const debouncedSync = (() => {
-      let timeout: number | null = null;
-      return (data: typeof previousData) => {
-        if (timeout) clearTimeout(timeout);
-        timeout = window.setTimeout(() => {
-          syncToFirestore(data);
-          timeout = null;
-        }, 1000);
-        syncTimeoutRef.current = timeout;
-      };
-    })();
-
-    syncUnsubscribeRef.current = useBudgetStore.subscribe(
+    const unsubscribe = useBudgetStore.subscribe(
       (state) => state.data,
       (data) => {
         if (isUpdatingFromFirestoreRef.current) return;
 
-        if (JSON.stringify(data) !== JSON.stringify(previousData)) {
-          previousData = data;
-          debouncedSync(data);
+        const currentDataString = JSON.stringify(data);
+        if (currentDataString === previousDataString) return;
+
+        previousDataString = currentDataString;
+
+        if (timeoutId) {
+          clearTimeout(timeoutId);
         }
+
+        timeoutId = window.setTimeout(async () => {
+          try {
+            await saveBudgetDataToFirestore(user.uid, data);
+          } catch (error: any) {
+            const errorMessage =
+              error?.message || "Failed to save data. Please try again.";
+            toast.error("Failed to save", {
+              description: errorMessage,
+            });
+            console.error("Error saving budget data to Firestore:", error);
+          }
+        }, 1000);
       },
       {
         equalityFn: (a, b) => JSON.stringify(a) === JSON.stringify(b),
@@ -193,21 +110,31 @@ function BudgetSync({ userId }: { userId: string }) {
     );
 
     return () => {
-      if (syncUnsubscribeRef.current) {
-        syncUnsubscribeRef.current();
-        syncUnsubscribeRef.current = null;
-      }
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
+      unsubscribe();
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
     };
-  }, [userId]);
+  }, [loading, user]);
 
-  return null;
-}
+  useEffect(() => {
+    if (!user?.uid) return;
 
-export default function App() {
-  const { user, loading } = useAuth();
+    const loadData = async () => {
+      isUpdatingFromFirestoreRef.current = true;
+      try {
+        const data = await loadBudgetDataFromFirestore(user.uid);
+        if (data !== null) {
+          useBudgetStore.setState({ data: data });
+        }
+      } finally {
+        setTimeout(() => {
+          isUpdatingFromFirestoreRef.current = false;
+        }, 500);
+      }
+    };
+    loadData();
+  }, [user]);
 
   if (loading) {
     return (
@@ -227,16 +154,7 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route
           path="/*"
-          element={
-            user ? (
-              <>
-                <BudgetSync userId={user.uid} />
-                <AppLayout />
-              </>
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
+          element={user ? <AppLayout /> : <Navigate to="/login" replace />}
         />
       </Routes>
     </>

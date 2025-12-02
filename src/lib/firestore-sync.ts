@@ -11,6 +11,28 @@ import type { BudgetData } from "./storage";
 
 const COLLECTION_NAME = "budgets";
 
+function removeUndefinedValues<T>(obj: T): T {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(removeUndefinedValues) as T;
+  }
+
+  if (typeof obj === "object") {
+    const cleaned: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        cleaned[key] = removeUndefinedValues(value);
+      }
+    }
+    return cleaned as T;
+  }
+
+  return obj;
+}
+
 export async function loadBudgetDataFromFirestore(
   userId: string
 ): Promise<BudgetData | null> {
@@ -37,7 +59,8 @@ export async function initializeBudgetDocument(
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
-      await setDoc(docRef, defaultData, { merge: false });
+      const sanitizedData = removeUndefinedValues(defaultData);
+      await setDoc(docRef, sanitizedData, { merge: false });
     }
   } catch (error) {
     console.error("Error initializing budget document:", error);
@@ -50,8 +73,9 @@ export async function saveBudgetDataToFirestore(
   data: BudgetData
 ): Promise<void> {
   try {
+    const sanitizedData = removeUndefinedValues(data);
     const docRef = doc(db, COLLECTION_NAME, userId);
-    await setDoc(docRef, data, { merge: false });
+    await setDoc(docRef, sanitizedData, { merge: false });
   } catch (error) {
     console.error("Error saving budget data to Firestore:", error);
     throw error;
